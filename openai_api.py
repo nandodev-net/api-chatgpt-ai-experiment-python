@@ -55,11 +55,13 @@ def openai_request(language):
         while tries < MAX_TRIES:
             try:
                 # Try to make the request to the OpenAI API
-                completion = openai.Completion.create(
-                    engine="text-davinci-003", prompt=user_prompt, max_tokens=256
+                completion = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": user_prompt}],
+                    max_tokens=256
                 )
-                # If the request is successful, return the model's response
-                return completion.choices[0].text
+                # Return the assistant's reply text
+                return completion.choices[0].message.content
             except Exception as e:
                 # If an error occurs, print an error message and retry
                 tries += 1
@@ -99,7 +101,9 @@ def openai_request(language):
     while itera < openai_iterations:
         # Generate the receiver's response
         response_receiver = openai_connection(prompt_receiver)
-        # print(response_receiver)
+        if response_receiver is None:
+            print("Failed to get response from OpenAI. Stopping conversation.")
+            break
         # Add the receiver's response to the sender's prompt
         prompt_sender = prompt_sender + ("\nKyle: " + response_receiver + "\n")
         prompt_receiver = prompt_receiver + ("\nKyle: " + response_receiver + "\n")
@@ -107,12 +111,14 @@ def openai_request(language):
         receiver_list.append(response_receiver)
 
         # Generate the sender's response based on the receiver's response
-        reponse_sender = openai_connection(response_receiver)
-        # print(reponse_sender)
-        prompt_receiver = prompt_receiver + ("\nCartman: " + reponse_sender + "\n")
-        prompt_sender = prompt_sender + ("\nCartman: " + reponse_sender + "\n")
+        response_sender = openai_connection(response_receiver)
+        if response_sender is None:
+            print("Failed to get response from OpenAI. Stopping conversation.")
+            break
+        prompt_receiver = prompt_receiver + ("\nCartman: " + response_sender + "\n")
+        prompt_sender = prompt_sender + ("\nCartman: " + response_sender + "\n")
         # Add the sender's response to the list of sender's responses
-        sender_list.append(reponse_sender)
+        sender_list.append(response_sender)
         itera += 1
     # Return a dictionary with the sender's and receiver's response lists without line breaks
     return {

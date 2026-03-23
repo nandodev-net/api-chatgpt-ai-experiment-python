@@ -1,4 +1,5 @@
 import os
+import threading
 import tkinter as tk
 from itertools import count, cycle
 
@@ -18,6 +19,7 @@ class ImageLabel(tk.Label):
     Attributes:
         frames (cycle): A cycle of frames if the image is a gif.
         delay (int): The delay between frames in milliseconds.
+        paused (bool): Whether the animation is currently paused.
     """
 
     def load(self, im):
@@ -42,31 +44,40 @@ class ImageLabel(tk.Label):
         except EOFError:
             pass
         self.frames = cycle(frames)
+        self.paused = False
 
         try:
             self.delay = im.info["duration"]
-        except:
+        except KeyError:
             self.delay = 100
 
         if len(frames) == 1:
-            # If there's only one frame, display it
             self.config(image=next(self.frames))
-            # Otherwise, display the frames one by one in a loop
         else:
             self.next_frame()
 
     def unload(self):
         """
-        Displays the next frame of the gif.
+        Unloads the current image.
         """
         self.config(image=None)
         self.frames = None
+
+    def pause(self):
+        """Stops the gif animation on the current frame."""
+        self.paused = True
+
+    def resume(self):
+        """Resumes the gif animation from where it was paused."""
+        if self.paused:
+            self.paused = False
+            self.next_frame()
 
     def next_frame(self):
         """
         Displays the next frame of the gif.
         """
-        if self.frames:
+        if self.frames and not self.paused:
             self.config(image=next(self.frames))
             self.after(self.delay, self.next_frame)
 
@@ -178,23 +189,31 @@ class ChatInterface:
         if is_you and dialogue_a:
             message = dialogue_a.pop(0)
             voice = self.voices[language_voices[0]].id
+            speaking_label = self.face1_label
+            silent_label = self.face2_label
         # If it's the other person's turn and there are messages to send
         elif not is_you and dialogue_b:
             message = dialogue_b.pop(0)
             voice = self.voices[language_voices[1]].id
+            speaking_label = self.face2_label
+            silent_label = self.face1_label
         else:
             # End the conversation if there are no more messages
             return
 
-        # Display the message and speak it out loud
-        self.print_message(is_you, message)
-        self.root.update_idletasks()  # Add this line to update the GUI
-        self.speak_message(voice, message)
+        # Pause the silent participant and animate only the speaking one
+        silent_label.pause()
+        speaking_label.resume()
 
-        # Wait for a delay before sending the next message
-        self.root.after(
-            100, lambda: self.send_dialogue(not is_you, dialogue_a, dialogue_b)
-        )
+        self.print_message(is_you, message)
+
+        # Run TTS in a background thread so the main thread (and GIF animations) keep running.
+        # Once speech finishes, schedule the next turn from the main thread via root.after().
+        def speak_and_continue():
+            self.speak_message(voice, message)
+            self.root.after(100, lambda: self.send_dialogue(not is_you, dialogue_a, dialogue_b))
+
+        threading.Thread(target=speak_and_continue, daemon=True).start()
 
     # Method to display the messages in the text box
     def print_message(self, is_you, message):
@@ -247,7 +266,7 @@ if __name__ == "__main__":
         else:
             dialogue_a = test_dialogues.dialogue_a_ES
             dialogue_b = test_dialogues.dialogue_b_ES
-            language_voices = [3, 2]
+            language_voices = [0, 1]
 
     # Get the dialogues from OpenAI API
     else:
@@ -263,7 +282,7 @@ if __name__ == "__main__":
             dialogues = openai_request("ES")
             dialogue_a = dialogues["sender"]
             dialogue_b = dialogues["receiver"]
-            language_voices = [3, 2]
+            language_voices = [0, 1]
 
     # Create the main window and chat interface
     root = tk.Tk()
