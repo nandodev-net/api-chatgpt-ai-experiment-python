@@ -57,8 +57,11 @@ def openai_request(language):
                 # Try to make the request to the OpenAI API
                 completion = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": user_prompt}],
-                    max_tokens=256
+                    messages=[
+                        {"role": "system", "content": "You are playing a character in a short dialogue. Reply with ONE sentence only, maximum 12 words. Never break character."},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    max_tokens=60
                 )
                 # Return the assistant's reply text
                 return completion.choices[0].message.content

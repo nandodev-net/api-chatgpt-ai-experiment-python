@@ -124,14 +124,18 @@ class ChatInterface:
         self.face2_frame = tk.Frame(self.root)
         self.face2_frame.grid(row=0, column=2, padx=10, pady=10)
 
-        # Display animated gifs in the frames
+        # Load GIFs paused and hidden — they appear when Start is pressed
         self.face1_label = ImageLabel(self.face1_frame)
         self.face1_label.load("assets/talk.gif")
+        self.face1_label.pause()
         self.face1_label.grid(row=1, column=0, sticky="w")
+        self.face1_frame.grid_remove()
 
         self.face2_label = ImageLabel(self.face2_frame)
         self.face2_label.load("assets/talk2.gif")
+        self.face2_label.pause()
         self.face2_label.grid(row=1, column=1, sticky="e")
+        self.face2_frame.grid_remove()
 
         # Create the text box for the conversation
         self.dialogue_label = tk.Text(
@@ -142,14 +146,32 @@ class ChatInterface:
         self.dialogue_label.configure(bg="#333")
         self.dialogue_label.configure(font=("Arial", 12), fg="white")
 
+        # Start button — triggers the conversation when clicked
+        self.start_button = tk.Button(
+            self.root,
+            text="Start",
+            font=("Arial", 12, "bold"),
+            bg="#444",
+            fg="white",
+            relief="flat",
+            padx=20,
+            pady=8,
+            command=lambda: self.start_conversation(dialogue_a, dialogue_b),
+        )
+        self.start_button.grid(row=1, column=1, pady=10)
+
         # Set up the layout
         self.root.columnconfigure(0, weight=1)
         self.root.columnconfigure(1, weight=1)
         self.root.columnconfigure(2, weight=1)
         self.root.rowconfigure(0, weight=1)
 
-        # Start the conversation with a delay
-        self.root.after(100, lambda: self.send_dialogue(True, dialogue_a, dialogue_b))
+    def start_conversation(self, dialogue_a, dialogue_b):
+        """Shows the GIFs, disables the start button, and begins the dialogue."""
+        self.face1_frame.grid()
+        self.face2_frame.grid()
+        self.start_button.config(state="disabled", text="Playing...")
+        self.send_dialogue(True, dialogue_a, dialogue_b)
 
     # Method to animate the gifs
     def animate_gif(self, label, gif_path):
@@ -290,10 +312,10 @@ if __name__ == "__main__":
 
     # Configure the text box tags for different speakers
     chat_interface.dialogue_label.tag_configure(
-        "you_tag", foreground="blue", font=("Arial", 10, "bold")
+        "you_tag", foreground="red", font=("Arial", 10, "bold")
     )
     chat_interface.dialogue_label.tag_configure(
-        "other_tag", foreground="red", font=("Arial", 10, "bold")
+        "other_tag", foreground="green", font=("Arial", 10, "bold")
     )
 
     # Handle the window closing event
